@@ -10,7 +10,7 @@ from routers.users.router import router as registration
 from constants import DB_AUTH_NAME, CLN_USERS, ADMIN_ROLE
 from services.users_related import gather_correct_user_data
 from database.collections.collections import create_basic_collections
-from routers.users.crud import db_get_user_by_username_password, db_create_new_user
+from routers.users.crud import db_get_user_by_username, db_create_new_user
 
 
 load_dotenv('.env')
@@ -67,7 +67,7 @@ async def prepare_db():
     logger.info('Checking for admin account')
     admin_login = os.getenv('admin_login')
     admin_password = os.getenv('admin_password')
-    admin_exist = await db_get_user_by_username_password(
+    admin_exist = await db_get_user_by_username(
         admin_login, DB_AUTH_NAME, CLN_USERS, db,
     )
     if admin_exist:
