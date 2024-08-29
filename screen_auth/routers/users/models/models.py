@@ -1,6 +1,12 @@
 from enum import Enum
 from pydantic import BaseModel, Field, constr, field_validator
-from constants import MANAGER_ROLE, OPERATOR_ROLE, LAB_PERSONAL_ROLE
+from constants import (
+    MANAGER_ROLE,
+    OPERATOR_ROLE,
+    LAB_PERSONAL_ROLE,
+    USER_EXAMPLE_LOGIN,
+    USER_EXAMPLE_PASSWORD
+)
 
 
 class Token(BaseModel):
@@ -40,11 +46,11 @@ def validate_password_complexity(password: str) -> str:
 class UserCreate(BaseModel):
     username: UsernameStr = Field(...,
                                   description='Unique `username` of the user',
-                                  examples=['JohnDoe'],
+                                  examples=[USER_EXAMPLE_LOGIN],
                                   )
     password: PasswordStr = Field(...,
                                   description='`password` of the user',
-                                  examples=['1Aa2345678!@'],
+                                  examples=[USER_EXAMPLE_PASSWORD],
                                   )
     userRole: UserRoles = Field(...,
                                 description='required role for the user',
