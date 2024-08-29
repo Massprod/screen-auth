@@ -16,8 +16,9 @@ async def gather_correct_user_data(
         'userRole': user_data['userRole'],
         'registrationDate': registration_date,
         'hashedPassword': hashed_pass,
-        'isBanned': False,
-        'banEndDate': None,
+        'isBlocked': False,
+        'blockEndDate': None,
+        'blockedBy': None,
     }
     return cor_data
 
