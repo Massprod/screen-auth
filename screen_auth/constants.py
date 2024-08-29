@@ -6,9 +6,11 @@ FLD_BASIC_SCHEMAS: str = 'database/collections/schemas'
 DB_AUTH_NAME: str = 'screenAuth'
 # CLN
 CLN_USERS: str = 'users'
+# ROLES
 MANAGER_ROLE: str = 'manager'
 LAB_PERSONAL_ROLE: str = 'labPersonal'
 OPERATOR_ROLE: str = 'operator'
+ADMIN_ROLE: str = 'admin'
 
 # JWT_token config
 PRIVATE_KEY_PATH = Path('certificates/private_key.pem')
