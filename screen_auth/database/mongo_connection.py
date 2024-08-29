@@ -26,8 +26,8 @@ def create_connection_string(
         ValueError: If any of the required credentials are missing.
     """
     try:
-        login = login or getenv('login')
-        password = password or getenv('password')
+        login = login or getenv('db_login')
+        password = password or getenv('db_password')
         server = server or getenv('server')
         replica_name = replica_name or getenv('replica_name')
         if not all([login, password, server, replica_name]):
