@@ -198,3 +198,46 @@ async def db_update_user_password(
             detail='Internal server error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+async def db_change_user_role(
+        changed_by: str,
+        username: str,
+        new_role: str,
+        db_name: str,
+        collection_name: str,
+        db: AsyncIOMotorClient,
+):
+    collection = await get_db_collection(
+        db, db_name, collection_name
+    )
+    log_db: str = await log_db_record(db_name, collection_name)
+    username = username.lower()
+    logger.info(
+        f'ADMIN = {changed_by} attempts to change `userRole` for `username` = {username}' + log_db
+    )
+    query = {
+        'username': username,
+    }
+    update = {
+        '$set': {
+            'userRole': new_role,
+        }
+    }
+    try:
+        result = await collection.update_one(query, update)
+        if 0 != result.matched_count:
+            logger.info(
+                f"ADMIN = {changed_by} successfully changed `userRole` for `username` = {username}" + log_db
+            )
+        return result
+    except PyMongoError as error:
+        log_error: str = await log_db_error_record(error)
+        logger.error(
+            f'Error while ADMIn = {changed_by} tried to'
+            f' change `userRole` for `username` = {username}' + log_error + log_db
+        )
+        raise HTTPException(
+            detail='Internal server error',
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

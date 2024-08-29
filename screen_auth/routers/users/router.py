@@ -11,7 +11,9 @@ from services.jwt_service import create_access_token, verify_admin_token
 from routers.users.models.models import (
     UserCreate,
     Token,
-    UsernameStr, PasswordStr,
+    UsernameStr,
+    PasswordStr,
+    UserRoles,
 )
 from constants import (
     DB_AUTH_NAME,
@@ -20,6 +22,8 @@ from constants import (
     USER_EXAMPLE_LOGIN,
     USER_NEW_EXAMPLE_PASSWORD,
     USER_EXAMPLE_PASSWORD,
+    USER_EXAMPLE_NEW_ROLE,
+    ADMIN_ROLE,
 )
 from routers.users.crud import (
     db_get_user_by_username,
@@ -27,6 +31,7 @@ from routers.users.crud import (
     db_block_user,
     db_unblock_user,
     db_update_user_password,
+    db_change_user_role,
 )
 from services.users_related import (
     gather_correct_user_data,
@@ -152,17 +157,28 @@ async def patch_route_block_user(
         db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
 ):
     unblock_date = (await time_w_timezone()) + datetime.timedelta(seconds=block_seconds)
-    result = await db_block_user(
-        admin_username, username, unblock_date, DB_AUTH_NAME, CLN_USERS, db
+    exist = await db_get_user_by_username(
+        username, DB_AUTH_NAME, CLN_USERS, db
     )
-    if 0 == result.matched_count:
-        logger.info(
-            f'`username` = {username} Not Found'
+    if not exist:
+        logger.warning(
+            f'`ADMIN = {admin_username} tried to block non existing `username` = {username}'
         )
         raise HTTPException(
             detail='Username Not Found',
             status_code=status.HTTP_404_NOT_FOUND,
         )
+    if ADMIN_ROLE == exist['userRole']:
+        logger.warning(
+            f'ADMIN = {admin_username} tried to block another ADMIN `username` = {username}'
+        )
+        raise HTTPException(
+            detail="ADMIN can't be blocked",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    result = await db_block_user(
+        admin_username, username, unblock_date, DB_AUTH_NAME, CLN_USERS, db
+    )
     return Response(
         status_code=status.HTTP_200_OK
     )
@@ -234,11 +250,19 @@ async def patch_route_change_user_password(
     )
     if not exist:
         logger.warning(
-            f"ADMIN = {admin_username} tried to change password for non existing username` = {username}"
+            f"ADMIN = {admin_username} tried to change password for non existing `username` = {username}"
         )
         raise HTTPException(
             detail='Not Found',
             status_code=status.HTTP_404_NOT_FOUND,
+        )
+    if ADMIN_ROLE == exist['userRole'] and username != admin_username:
+        logger.warning(
+            f'ADMIN = {admin_username} tried to change password of another ADMIN = {username}'
+        )
+        raise HTTPException(
+            detail='ADMIN password can be changed only by its owner',
+            status_code=status.HTTP_403_FORBIDDEN,
         )
     correct = await verify_password(old_password, exist['hashedPassword'])
     if not correct:
@@ -252,5 +276,47 @@ async def patch_route_change_user_password(
     new_pass_hash: str = await get_password_hash(new_password)
     result = await db_update_user_password(
         admin_username, username, new_pass_hash, DB_AUTH_NAME, CLN_USERS, db
+    )
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.patch(
+    path='/change_role',
+    name='Change Role',
+    description='Changing current user role',
+)
+async def patch_route_change_user_role(
+        username: UsernameStr = Query(...,
+                                      description='Required `username` credential',
+                                      example=USER_EXAMPLE_LOGIN,
+                                      ),
+        new_role: UserRoles = Query(...,
+                                    description='Required new `userRole` to set',
+                                    example=USER_EXAMPLE_NEW_ROLE,
+                                    ),
+        admin_username: str = Depends(verify_admin_token),
+        db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
+):
+    exists = await db_get_user_by_username(
+        username, DB_AUTH_NAME, CLN_USERS, db
+    )
+    if not exists:
+        logger.warning(
+            f'ADMIN = {admin_username} tried to change `userRole` for non existing `username` = {username}'
+        )
+        raise HTTPException(
+            detail='Username with provided `username` not found',
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+    if ADMIN_ROLE == exists['userRole']:
+        logger.warning(
+            f"ADMIN = {admin_username} tried to change `userRole` for another ADMIN = {username}"
+        )
+        raise HTTPException(
+            detail="ADMIN role can't be changed",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    result = await db_change_user_role(
+        admin_username, username, new_role, DB_AUTH_NAME, CLN_USERS, db
     )
     return Response(status_code=status.HTTP_200_OK)
