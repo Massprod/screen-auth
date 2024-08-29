@@ -5,8 +5,9 @@
     "username",
     "hashedPassword",
     "userRole",
-    "isBanned",
-    "banEndDate"
+    "isBlocked",
+    "blockEndDate",
+    "blockedBy"
   ],
   "properties": {
     "_id": {
@@ -30,20 +31,25 @@
       "enum": ["admin", "manager", "labPersonal", "operator"],
       "description": "Assigned roles of registered User"
     },
-    "isBanned": {
+    "isBlocked": {
       "bsonType": "bool",
       "description": "Block status of registered User"
     },
-    "banEndDate": {
+    "blockEndDate": {
       "bsonType": ["date", "null"],
       "description": "timestamp of time when restrictions lifted from registered User"
+    },
+    "blockedBy": {
+      "bsonType": ["string", "null"],
+      "description": "`username` of user who blocked this `user`"
     }
   },
   "indexes": [
     { "keys": {"username": 1}, "options": {"unique": true} },
     { "keys": {"registrationDate": 1} },
     { "keys": {"userRole":  1} },
-    { "keys": {"isBanned": 1} },
-    { "keys": {"banEndDate": 1} }
+    { "keys": {"isBlocked": 1} },
+    { "keys": {"blockEndDate": 1} },
+    { "keys": {"blockedBy": 1} }
   ]
 }
