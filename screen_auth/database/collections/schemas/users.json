@@ -1,0 +1,49 @@
+{
+  "bsonType": "object",
+  "required": [
+    "registrationDate",
+    "username",
+    "hashedPassword",
+    "userRole",
+    "isBanned",
+    "banEndDate"
+  ],
+  "properties": {
+    "_id": {
+      "bsonType": "objectId",
+      "description": "Unique identifier for the DB document"
+    },
+    "registrationDate": {
+      "bsonType": "date",
+      "description": "timestamp of use registration time"
+    },
+    "username": {
+      "bsonType": "string",
+      "description": "Unique username of registered User"
+    },
+    "hashedPassword": {
+      "bsonType": "string",
+      "description": "Hashed password of registered User"
+    },
+    "userRole": {
+      "bsonType": "string",
+      "enum": ["admin", "manager", "labPersonal", "operator"],
+      "description": "Assigned roles of registered User"
+    },
+    "isBanned": {
+      "bsonType": "bool",
+      "description": "Block status of registered User"
+    },
+    "banEndDate": {
+      "bsonType": ["date", "null"],
+      "description": "timestamp of time when restrictions lifted from registered User"
+    }
+  },
+  "indexes": [
+    { "keys": {"username": 1}, "options": {"unique": true} },
+    { "keys": {"registrationDate": 1} },
+    { "keys": {"userRole":  1} },
+    { "keys": {"isBanned": 1} },
+    { "keys": {"banEndDate": 1} }
+  ]
+}
