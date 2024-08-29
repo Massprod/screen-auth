@@ -2,7 +2,6 @@ from loguru import logger
 from pymongo.errors import PyMongoError
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorClient
-from routers.users.models.models import UserCreate
 from services.mongo_related import (
     get_db_collection,
     log_db_record,
@@ -10,12 +9,13 @@ from services.mongo_related import (
 )
 
 
-async def db_get_user_by_username(
+async def db_get_user_by_username_password(
         username: str,
         db_name: str,
         collection_name: str,
         db: AsyncIOMotorClient,
 ):
+    username = username.lower()
     collection = await get_db_collection(db, db_name, collection_name)
     log_db: str = await log_db_record(db_name, collection_name)
     logger.info(
@@ -41,7 +41,7 @@ async def db_get_user_by_username(
         )
 
 
-async def db_create_a_new_user(
+async def db_create_new_user(
         user_data: dict,
         db_name: str,
         collection_name: str,
@@ -49,6 +49,7 @@ async def db_create_a_new_user(
 ):
     collection = await get_db_collection(db, db_name, collection_name)
     log_db: str = await log_db_record(db_name, collection_name)
+    user_data['username'] = user_data['username'].lower()
     username = user_data['username']
     logger.info(
         f'Creating a new user with `username` = {username}' + log_db
