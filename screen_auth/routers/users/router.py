@@ -7,21 +7,20 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from services.pass_service import verify_password, get_password_hash
 from fastapi import APIRouter, Body, Depends, HTTPException, status, Query
-from services.jwt_service import create_access_token, verify_admin_token
+from services.jwt_service import create_access_token, verify_admin_token, verify_manager_token
 from routers.users.models.models import (
     UserCreate,
     Token,
     UsernameStr,
-    PasswordStr,
+    UserResetPassword,
     UserRoles,
+    UserChangePassword,
 )
 from constants import (
     DB_AUTH_NAME,
     CLN_USERS,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ACCESS_TOKEN_EXPIRE_SECONDS,
     USER_EXAMPLE_LOGIN,
-    USER_NEW_EXAMPLE_PASSWORD,
-    USER_EXAMPLE_PASSWORD,
     USER_EXAMPLE_NEW_ROLE,
     ADMIN_ROLE,
 )
@@ -35,7 +34,8 @@ from routers.users.crud import (
 )
 from services.users_related import (
     gather_correct_user_data,
-    gather_token_response, time_w_timezone,
+    gather_token_response,
+    time_w_timezone,
 )
 
 
@@ -51,9 +51,13 @@ router: APIRouter = APIRouter()
 async def post_route_register_user(
         user_data: UserCreate = Body(...,
                                      description='Required new User data'),
+        manager_username: str = Depends(verify_manager_token),
         db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
 ):
     user_data = user_data.model_dump()
+    logger.info(
+        f'{manager_username} attempts to register a new Username = {user_data['username']}'
+    )
     exists = await db_get_user_by_username(
         user_data['username'], DB_AUTH_NAME, CLN_USERS, db
     )
@@ -73,7 +77,7 @@ async def post_route_register_user(
         'sub': user_data['username'],
         'userRole': user_data['userRole'],
     }
-    user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_MINUTES)
+    user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_SECONDS)
     return JSONResponse(
         content=await gather_token_response(user_access_token),
         status_code=status.HTTP_200_OK,
@@ -132,7 +136,7 @@ async def get_route_login_user(
         'sub': exists['username'],
         'userRole': exists['userRole'],
     }
-    user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_MINUTES)
+    user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_SECONDS)
     return JSONResponse(
         content=await gather_token_response(user_access_token),
         status_code=status.HTTP_200_OK,
@@ -219,21 +223,15 @@ async def patch_route_unblock_user(
     description='Changing user access password',
 )
 async def patch_route_change_user_password(
-        username: UsernameStr = Query(...,
-                                      description='Required `username` credential',
-                                      example=USER_EXAMPLE_LOGIN,
-                                      ),
-        old_password: PasswordStr = Query(...,
-                                          description='Required old `password` of the user',
-                                          example=USER_EXAMPLE_PASSWORD,
-                                          ),
-        new_password: PasswordStr = Query(...,
-                                          description='Required new `password` of the user',
-                                          example=USER_NEW_EXAMPLE_PASSWORD,
-                                          ),
+        new_user_data: UserChangePassword = Body(...,
+                                                 description='Required user data:'
+                                                             ' `username`, `old_password`, `new_password`',
+                                                 ),
         admin_username: str = Depends(verify_admin_token),
         db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
 ):
+    user_data = new_user_data.model_dump()
+    username, old_password, new_password = user_data['username'], user_data['old_password'], user_data['new_password']
     logger.info(
         f'ADMIN = {admin_username} attempts to change `username` = {username} password'
     )
@@ -274,6 +272,48 @@ async def patch_route_change_user_password(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     new_pass_hash: str = await get_password_hash(new_password)
+    result = await db_update_user_password(
+        admin_username, username, new_pass_hash, DB_AUTH_NAME, CLN_USERS, db
+    )
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.patch(
+    path='/reset_password',
+    name='Reset Password',
+    description='Reset current password of user',
+)
+async def patch_route_reset_user_password(
+        user_data: UserResetPassword = Body(...,
+                                            description='Required data for reset'),
+        admin_username: str = Depends(verify_admin_token),
+        db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
+):
+    user_data = user_data.model_dump()
+    username, reset_password = user_data['username'], user_data['new_password']
+    logger.info(
+        f'ADMIN = {admin_username} attempts to reset `username` = {username} password'
+    )
+    exists = await db_get_user_by_username(
+        username, DB_AUTH_NAME, CLN_USERS, db
+    )
+    if not exists:
+        logger.warning(
+            f'ADMIN = {admin_username} tried to reset password for non existing `username` = {username}'
+        )
+        raise HTTPException(
+            detail='Not Found',
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+    if ADMIN_ROLE == exists['userRole'] and username != admin_username:
+        logger.warning(
+            f'ADMIN = {admin_username} tried to reset password of another ADMIN = {username}'
+        )
+        raise HTTPException(
+            detail='ADMIN password can be reset only by its owner',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    new_pass_hash: str = await get_password_hash(reset_password)
     result = await db_update_user_password(
         admin_username, username, new_pass_hash, DB_AUTH_NAME, CLN_USERS, db
     )
