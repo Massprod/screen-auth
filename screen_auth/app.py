@@ -71,7 +71,7 @@ async def prepare_db():
         admin_login, DB_AUTH_NAME, CLN_USERS, db,
     )
     if admin_exist:
-        logger.info("Admin account check complete. It's already exist")
+        logger.info("Admin account check complete. Already exist")
     else:
         logger.warning(
             "Admin account check complete. It's not present."
