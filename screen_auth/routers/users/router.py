@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from services.pass_service import verify_password, get_password_hash
 from fastapi import APIRouter, Body, Depends, HTTPException, status, Query
-from services.jwt_service import create_access_token, verify_admin_token, verify_manager_token
+from services.jwt_service import create_access_token, verify_admin_token, verify_manager_token, verify_token
 from routers.users.models.models import (
     UserCreate,
     Token,
@@ -80,6 +80,51 @@ async def post_route_register_user(
     user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_SECONDS)
     return JSONResponse(
         content=await gather_token_response(user_access_token),
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@router.post(
+    path='/token_refresh',
+    name='Refresh Token',
+    description='Updates expiration time and returns refreshed JWT in response',
+    response_model=Token,
+)
+async def post_route_token_refresh(
+        verified_token: dict = Depends(verify_token),
+        db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
+):
+    username = verified_token.get('sub')
+    if username is None:
+        logger.warning(
+            f'Attempt to use token without correct data in it'
+        )
+        raise HTTPException(
+            detail='Incorrect token',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    exists = await db_get_user_by_username(
+        username, DB_AUTH_NAME, CLN_USERS, db,
+    )
+    if not exists:
+        logger.warning(
+            f'Attempt to refresh token with incorrect credentials `username` = {username}'
+        )
+        raise HTTPException(
+            detail='Incorrect username',
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+    if exists and exists['isBlocked']:
+        logger.warning(
+            f'Attempt to refresh token for blocked `username` = {username}'
+        )
+        raise HTTPException(
+            detail='Blocked',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    refreshed_token = create_access_token(verified_token)
+    return JSONResponse(
+        content=await gather_token_response(refreshed_token),
         status_code=status.HTTP_200_OK,
     )
 
