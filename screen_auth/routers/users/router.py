@@ -31,13 +31,14 @@ from routers.users.crud import (
     db_unblock_user,
     db_update_user_password,
     db_change_user_role,
+    db_get_users_data,
+    db_make_user_data_json_friendly,
 )
 from services.users_related import (
     gather_correct_user_data,
     gather_token_response,
     time_w_timezone,
 )
-
 
 router: APIRouter = APIRouter()
 
@@ -175,7 +176,7 @@ async def get_route_login_user(
                 f'Attempt to login on blocked account `username` = {username}'
             )
             raise HTTPException(
-                detail='User blocked',
+                detail='Blocked',
                 status_code=status.HTTP_403_FORBIDDEN,
             )
     token_data = {
@@ -406,3 +407,29 @@ async def patch_route_change_user_role(
         admin_username, username, new_role, DB_AUTH_NAME, CLN_USERS, db
     )
     return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get(
+    path='/all',
+    name='Get All Users',
+    description='Getting data about all users with chosen filtering',
+)
+async def get_route_get_all_users(
+        only_blocked: bool = Query(False,
+                                   description='`true` = response includes only data about `blocked` users'),
+        manager_username: str = Depends(verify_manager_token),
+        db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
+):
+    logger.info(
+        f'{manager_username} attempts to get users data'
+    )
+    users_data = await db_get_users_data(
+        only_blocked, DB_AUTH_NAME, CLN_USERS, db
+    )
+    resp_data = [
+        await db_make_user_data_json_friendly(user_data) for user_data in users_data
+    ]
+    return JSONResponse(
+        content=resp_data,
+        status_code=status.HTTP_200_OK,
+    )

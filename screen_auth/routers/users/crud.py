@@ -10,6 +10,15 @@ from services.mongo_related import (
 )
 
 
+async def db_make_user_data_json_friendly(user_data: dict) -> dict:
+    user_data['_id'] = str(user_data['_id'])
+    user_data['registrationDate'] = user_data['registrationDate'].isoformat()
+    block_end = user_data.get('blockEndDate')
+    if block_end:
+        user_data['blockEndDate'] = block_end.isoformat()
+    return user_data
+
+
 async def db_get_user_by_username(
         username: str,
         db_name: str,
@@ -37,7 +46,7 @@ async def db_get_user_by_username(
             f'Error while searching for a user with `username`' + log_error + log_db
         )
         raise HTTPException(
-            detail='Error while searching `username',
+            detail='Interval Server Error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -67,7 +76,7 @@ async def db_create_new_user(
             f'Error while creating user with `username` = {username}' + log_error + log_db
         )
         raise HTTPException(
-            detail='Error while creating a new user',
+            detail='Interval Server Error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -111,7 +120,7 @@ async def db_block_user(
             f'Error while ADMIN = {blocked_by} tried to block `username` = {username}' + log_error + log_db
         )
         raise HTTPException(
-            detail='Internal server error',
+            detail='Interval Server Error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -152,7 +161,7 @@ async def db_unblock_user(
             f'Error while ADMIN = {unblocked_by} tried to unblock `username` = {username}' + log_error + log_db
         )
         raise HTTPException(
-            detail='Interval server error',
+            detail='Interval Server Error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -195,7 +204,7 @@ async def db_update_user_password(
             f" change password for `username` = {username}" + log_error + log_db
         )
         raise HTTPException(
-            detail='Internal server error',
+            detail='Interval Server Error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -234,10 +243,39 @@ async def db_change_user_role(
     except PyMongoError as error:
         log_error: str = await log_db_error_record(error)
         logger.error(
-            f'Error while ADMIn = {changed_by} tried to'
+            f'Error while ADMIN = {changed_by} tried to'
             f' change `userRole` for `username` = {username}' + log_error + log_db
         )
         raise HTTPException(
-            detail='Internal server error',
+            detail='Interval Server Error',
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+async def db_get_users_data(
+        only_blocked: bool,
+        db_name: str,
+        collection_name: str,
+        db: AsyncIOMotorClient,
+):
+    collection = await get_db_collection(
+        db, db_name, collection_name
+    )
+    log_db: str = await log_db_record(db_name, collection_name)
+    query = {}
+    if only_blocked:
+        query.update({
+            'isBlocked': True
+        })
+    try:
+        result = await collection.find(query).to_list(length=None)
+        return result
+    except PyMongoError as error:
+        log_error: str = await log_db_error_record(error)
+        logger.error(
+            f'Error while getting users data' + log_error + log_db
+        )
+        raise HTTPException(
+            detail='Interval Server Error',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
