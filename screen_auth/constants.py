@@ -23,8 +23,10 @@ with open(PUBLIC_KEY_PATH, 'r') as key_file:
     PUBLIC_KEY = key_file.read()
 
 ALGORITHM = 'RS256'
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_SECONDS = 180
 # ---
+# RESET PASS
+RESET_PASSWORD = '123456789@Aa#'
 
 
 # User Example
