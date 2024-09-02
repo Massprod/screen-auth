@@ -95,14 +95,6 @@ async def post_route_token_refresh(
         db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
 ):
     username = verified_token.get('sub')
-    if username is None:
-        logger.warning(
-            f'Attempt to use token without correct data in it'
-        )
-        raise HTTPException(
-            detail='Incorrect token',
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
     exists = await db_get_user_by_username(
         username, DB_AUTH_NAME, CLN_USERS, db,
     )
@@ -111,8 +103,17 @@ async def post_route_token_refresh(
             f'Attempt to refresh token with incorrect credentials `username` = {username}'
         )
         raise HTTPException(
-            detail='Incorrect username',
-            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Incorrect Token',
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+    user_role = verified_token.get('userRole')
+    if exists['userRole'] != user_role:
+        logger.warning(
+            f'Attempt to refresh token with incorrect data `userRole` = {user_role}'
+        )
+        raise HTTPException(
+            detail='Incorrect Token',
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
     if exists and exists['isBlocked']:
         logger.warning(
