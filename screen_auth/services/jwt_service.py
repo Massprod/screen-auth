@@ -167,6 +167,14 @@ async def verify_manager_token(token: str = Depends(oauth2_scheme)) -> str:
                 detail='Invalid Token',
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
+        if user_exists['isBlocked']:
+            logger.warning(
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | BLocked `username` = {username}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
         user_role = user_exists['userRole']
         if user_role != role:
             logger.warning(
