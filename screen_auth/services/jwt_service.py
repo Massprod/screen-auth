@@ -32,6 +32,24 @@ def create_access_token(data: dict, expiration_delta: int = ACCESS_TOKEN_EXPIRE_
 def verify_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, PUBLIC_KEY, algorithms=[ALGORITHM])
+        username = payload.get('sub')
+        if username is None:
+            logger.warning(
+                f'Attempt to use token without correct data in it | Missing `sub`'
+            )
+            raise HTTPException(
+                detail='Incorrect token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        user_role = payload.get('userRole')
+        if user_role is None:
+            logger.warning(
+                f'Attempt to use token without correct data in it | Missing `userRole`'
+            )
+            raise HTTPException(
+                detail='Incorrect token',
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
         return payload
     except JWTError as error:
         logger.error(
@@ -52,15 +70,7 @@ async def get_current_user_role(token: str = Depends(oauth2_scheme)) -> str:
     )
     try:
         payload = verify_token(token)
-        role: str | None = payload.get('userRole')
-        if role is None:
-            logger.warning(
-                f'Attempt to use incorrect token = {token}'
-            )
-            raise HTTPException(
-                detail='Invalid token',
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
+        role: str = payload.get('userRole')
         return role
     except JWTError as error:
         logger.error(
@@ -78,24 +88,16 @@ async def verify_admin_token(token: str = Depends(oauth2_scheme)) -> str:
     )
     try:
         payload = verify_token(token)
-        role: str | None = payload.get('userRole')
+        role: str = payload.get('userRole')
         if ADMIN_ROLE != role:
             logger.warning(
-                f'Attempt to use incorrect ADMIN token = {token} | Not set `userRole`'
+                f'Attempt to use incorrect ADMIN token = {token} | Not valid `userRole` = {role}'
             )
             raise HTTPException(
                 detail='Invalid Token',
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
         username = payload.get('sub')
-        if username is None:
-            logger.warning(
-                f'Attempt to use incorrect ADMIN token = {token} | Not set `sub`'
-            )
-            raise HTTPException(
-                detail='Invalid Token',
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
         db = mongo_client.get_client()
         user_exists = await db_get_user_by_username(
             username, DB_AUTH_NAME, CLN_USERS, db
@@ -109,6 +111,15 @@ async def verify_admin_token(token: str = Depends(oauth2_scheme)) -> str:
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
         user_role = user_exists['userRole']
+        if user_role != role:
+            logger.warning(
+                f'Attempt to use incorrect ADMIN token = {token} |'
+                f' `userRole` = {user_role} token has different role = {role}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
         if ADMIN_ROLE != user_role:
             logger.warning(
                 f'Attempt to use incorrect ADMIN token = {token} | Incorrect `userRole` = {user_role}'
@@ -134,24 +145,16 @@ async def verify_manager_token(token: str = Depends(oauth2_scheme)) -> str:
     )
     try:
         payload = verify_token(token)
-        role: str | None = payload.get('userRole')
+        role: str = payload.get('userRole')
         if MANAGER_ROLE != role and ADMIN_ROLE != role:
             logger.warning(
-                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Not set `userRole`'
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Not valid `userRole` = {role}'
             )
             raise HTTPException(
                 detail='Invalid Token',
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
         username = payload.get('sub')
-        if username is None:
-            logger.warning(
-                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Not set `sub`'
-            )
-            raise HTTPException(
-                detail='Invalid Token',
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
         db = mongo_client.get_client()
         user_exists = await db_get_user_by_username(
             username, DB_AUTH_NAME, CLN_USERS, db
@@ -165,6 +168,15 @@ async def verify_manager_token(token: str = Depends(oauth2_scheme)) -> str:
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
         user_role = user_exists['userRole']
+        if user_role != role:
+            logger.warning(
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} |'
+                f' `userRole` = {user_role} token has different role = {role}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
         if ADMIN_ROLE != user_role and MANAGER_ROLE != user_role:
             logger.warning(
                 f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Incorrect `userRole` = {user_role}'
