@@ -10,7 +10,11 @@ from constants import (
     ACCESS_TOKEN_EXPIRE_SECONDS,
     ADMIN_ROLE,
     MANAGER_ROLE,
+    DB_AUTH_NAME,
+    CLN_USERS,
 )
+from database.mongo_connection import mongo_client
+from routers.users.crud import db_get_user_by_username
 
 
 def create_access_token(data: dict, expiration_delta: int = ACCESS_TOKEN_EXPIRE_SECONDS) -> str:
@@ -77,13 +81,43 @@ async def verify_admin_token(token: str = Depends(oauth2_scheme)) -> str:
         role: str | None = payload.get('userRole')
         if ADMIN_ROLE != role:
             logger.warning(
-                f'Attempt to use incorrect ADMIN token = {token}'
+                f'Attempt to use incorrect ADMIN token = {token} | Not set `userRole`'
             )
             raise HTTPException(
                 detail='Invalid Token',
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
-        return payload.get('sub')
+        username = payload.get('sub')
+        if username is None:
+            logger.warning(
+                f'Attempt to use incorrect ADMIN token = {token} | Not set `sub`'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        db = mongo_client.get_client()
+        user_exists = await db_get_user_by_username(
+            username, DB_AUTH_NAME, CLN_USERS, db
+        )
+        if user_exists is None:
+            logger.warning(
+                f'Attempt to use incorrect ADMIN token = {token} | Not existing `username` = {username}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        user_role = user_exists['userRole']
+        if ADMIN_ROLE != user_role:
+            logger.warning(
+                f'Attempt to use incorrect ADMIN token = {token} | Incorrect `userRole` = {user_role}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        return username
     except JWTError as error:
         logger.error(
             f'Error while verifying provided token | Error: {error}'
@@ -103,13 +137,43 @@ async def verify_manager_token(token: str = Depends(oauth2_scheme)) -> str:
         role: str | None = payload.get('userRole')
         if MANAGER_ROLE != role and ADMIN_ROLE != role:
             logger.warning(
-                f'Attempt to use incorrect MANAGER|ADMIN token = {token}'
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Not set `userRole`'
             )
             raise HTTPException(
                 detail='Invalid Token',
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
-        return payload.get('sub')
+        username = payload.get('sub')
+        if username is None:
+            logger.warning(
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Not set `sub`'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        db = mongo_client.get_client()
+        user_exists = await db_get_user_by_username(
+            username, DB_AUTH_NAME, CLN_USERS, db
+        )
+        if user_exists is None:
+            logger.warning(
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Not existing `username` = {username}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        user_role = user_exists['userRole']
+        if ADMIN_ROLE != user_role and MANAGER_ROLE != user_role:
+            logger.warning(
+                f'Attempt to use incorrect MANAGER|ADMIN token = {token} | Incorrect `userRole` = {user_role}'
+            )
+            raise HTTPException(
+                detail='Invalid Token',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        return username
     except JWTError as error:
         logger.error(
             f'Error while verifying provided token | Error: {error}'
