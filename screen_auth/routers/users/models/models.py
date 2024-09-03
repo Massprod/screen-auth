@@ -15,6 +15,7 @@ from constants import (
 class Token(BaseModel):
     access_token: str
     token_type: str = 'bearer'
+    user_role: str
 
 
 class UserRoles(str, Enum):

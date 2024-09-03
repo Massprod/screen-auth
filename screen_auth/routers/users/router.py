@@ -80,7 +80,7 @@ async def post_route_register_user(
     }
     user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_SECONDS)
     return JSONResponse(
-        content=await gather_token_response(user_access_token),
+        content=await gather_token_response(user_access_token, user_role=user_data['userRole']),
         status_code=status.HTTP_200_OK,
     )
 
@@ -126,7 +126,7 @@ async def post_route_token_refresh(
         )
     refreshed_token = create_access_token(verified_token)
     return JSONResponse(
-        content=await gather_token_response(refreshed_token),
+        content=await gather_token_response(refreshed_token, user_role=user_role),
         status_code=status.HTTP_200_OK,
     )
 
@@ -185,7 +185,7 @@ async def get_route_login_user(
     }
     user_access_token = create_access_token(token_data, ACCESS_TOKEN_EXPIRE_SECONDS)
     return JSONResponse(
-        content=await gather_token_response(user_access_token),
+        content=await gather_token_response(user_access_token, user_role=exists['userRole']),
         status_code=status.HTTP_200_OK,
     )
 

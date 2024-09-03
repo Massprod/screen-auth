@@ -25,10 +25,12 @@ async def gather_correct_user_data(
 
 async def gather_token_response(
         token: str,
-        token_type: str = 'bearer'
+        user_role: str,
+        token_type: str = 'bearer',
 ) -> dict:
     token_response = {
         'access_token': token,
         'token_type': token_type,
+        'user_role': user_role,
     }
     return token_response
