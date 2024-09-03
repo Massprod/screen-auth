@@ -267,8 +267,11 @@ async def db_get_users_data(
         query.update({
             'isBlocked': True
         })
+    projection = {
+        'hashedPassword': 0,
+    }
     try:
-        result = await collection.find(query).to_list(length=None)
+        result = await collection.find(query, projection).to_list(length=None)
         return result
     except PyMongoError as error:
         log_error: str = await log_db_error_record(error)
