@@ -17,12 +17,19 @@ from database.mongo_connection import mongo_client
 from routers.users.crud import db_get_user_by_username
 
 
-def create_access_token(data: dict, expiration_delta: int = ACCESS_TOKEN_EXPIRE_SECONDS) -> str:
+def create_access_token(
+        data: dict,
+        expiration_delta: int = ACCESS_TOKEN_EXPIRE_SECONDS,
+        issuer: str = 'rwsDit',
+) -> str:
     to_encode = data.copy()
+    issued_at: datetime = datetime.now(timezone.utc)
     expire = datetime.now(timezone.utc) + timedelta(seconds=expiration_delta)
     to_encode.update(
         {
             "exp": expire,
+            "iss": issuer,
+            'iat': issued_at,
         }
     )
     encoded_jwt = jwt.encode(to_encode, PRIVATE_KEY, algorithm=ALGORITHM)
