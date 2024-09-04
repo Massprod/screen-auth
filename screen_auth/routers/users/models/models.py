@@ -8,7 +8,8 @@ from constants import (
     USER_EXAMPLE_LOGIN,
     USER_EXAMPLE_PASSWORD,
     USER_NEW_EXAMPLE_PASSWORD,
-    RESET_PASSWORD
+    RESET_PASSWORD,
+    ADMIN_ROLE,
 )
 
 
@@ -22,6 +23,7 @@ class UserRoles(str, Enum):
     manager = MANAGER_ROLE
     operator = OPERATOR_ROLE
     labPersonal = LAB_PERSONAL_ROLE
+    admin = ADMIN_ROLE
 
 
 UsernameStr = constr(

@@ -52,12 +52,12 @@ router: APIRouter = APIRouter()
 async def post_route_register_user(
         user_data: UserCreate = Body(...,
                                      description='Required new User data'),
-        manager_username: str = Depends(verify_manager_token),
+        admin_username: str = Depends(verify_admin_token),
         db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
 ):
     user_data = user_data.model_dump()
     logger.info(
-        f'{manager_username} attempts to register a new Username = {user_data['username']}'
+        f'{admin_username} attempts to register a new Username = {user_data['username']}'
     )
     exists = await db_get_user_by_username(
         user_data['username'], DB_AUTH_NAME, CLN_USERS, db
@@ -286,10 +286,7 @@ async def patch_route_change_user_password(
         logger.warning(
             f'ADMIN = {admin_username} provided equal passwords data | Rejected'
         )
-        raise HTTPException(
-            detail='Equal credentials provided',
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response(status_code=status.HTTP_302_FOUND,)
     exist = await db_get_user_by_username(
         username, DB_AUTH_NAME, CLN_USERS, db
     )
