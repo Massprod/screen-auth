@@ -68,7 +68,7 @@ async def post_route_register_user(
         )
         raise HTTPException(
             detail='User with provided `username` already exists',
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_302_FOUND,
         )
     correct_data = await gather_correct_user_data(user_data)
     await db_create_new_user(
