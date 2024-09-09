@@ -1,4 +1,5 @@
 from pathlib import Path
+from os import getenv
 
 
 FLD_BASIC_SCHEMAS: str = 'database/collections/schemas'
@@ -22,11 +23,11 @@ with open(PRIVATE_KEY_PATH, 'r') as key_file:
 with open(PUBLIC_KEY_PATH, 'r') as key_file:
     PUBLIC_KEY = key_file.read()
 
-ALGORITHM = 'RS256'
-ACCESS_TOKEN_EXPIRE_SECONDS = 180
+ALGORITHM = getenv('jwt_algorithm')
+ACCESS_TOKEN_EXPIRE_SECONDS = int(getenv('jwt_expiration'))
 # ---
 # RESET PASS
-RESET_PASSWORD = '123456789@Aa#'
+RESET_PASSWORD = getenv('reset_password')
 
 
 # User Example
