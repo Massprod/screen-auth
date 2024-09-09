@@ -1,3 +1,4 @@
+from os import getenv
 from loguru import logger
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
@@ -17,10 +18,13 @@ from database.mongo_connection import mongo_client
 from routers.users.crud import db_get_user_by_username
 
 
+issuerName = 'NotSpecified' or getenv('jwt_issuer')
+
+
 def create_access_token(
         data: dict,
         expiration_delta: int = ACCESS_TOKEN_EXPIRE_SECONDS,
-        issuer: str = 'rwsDit',
+        issuer: str = issuerName,
 ) -> str:
     to_encode = data.copy()
     issued_at: datetime = datetime.now(timezone.utc)
@@ -45,7 +49,7 @@ def verify_token(token: str) -> dict | None:
                 f'Attempt to use token without correct data in it | Missing `sub`'
             )
             raise HTTPException(
-                detail='Incorrect token',
+                detail='Invalid Sub',
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
         user_role = payload.get('userRole')
@@ -54,8 +58,17 @@ def verify_token(token: str) -> dict | None:
                 f'Attempt to use token without correct data in it | Missing `userRole`'
             )
             raise HTTPException(
-                detail='Incorrect token',
+                detail='Invalid userRole',
                 status_code=status.HTTP_401_UNAUTHORIZED
+            )
+        issuer = payload.get('iss')
+        if issuer != issuerName:
+            logger.warning(
+                f'Attempt to use token without trusted `iss` | Issuer: {issuer}'
+            )
+            raise HTTPException(
+                detail='Invalid Issuer',
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
         return payload
     except JWTError as error:
