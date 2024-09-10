@@ -18,7 +18,7 @@ from database.mongo_connection import mongo_client
 from routers.users.crud import db_get_user_by_username
 
 
-issuerName = 'NotSpecified' or getenv('jwt_issuer')
+issuerName = getenv('jwt_issuer') or 'NotSpecified'
 
 
 def create_access_token(
