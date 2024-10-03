@@ -10,6 +10,7 @@ from constants import (
     USER_NEW_EXAMPLE_PASSWORD,
     RESET_PASSWORD,
     ADMIN_ROLE,
+    CELERY_WORKER
 )
 
 
@@ -24,6 +25,7 @@ class UserRoles(str, Enum):
     operator = OPERATOR_ROLE
     labPersonal = LAB_PERSONAL_ROLE
     admin = ADMIN_ROLE
+    celeryWorker = CELERY_WORKER
 
 
 UsernameStr = constr(

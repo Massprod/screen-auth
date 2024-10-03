@@ -1,4 +1,5 @@
 from os import getenv
+from os.path import exists
 from motor.motor_asyncio import AsyncIOMotorClient
 from loguru import logger
 from dotenv import load_dotenv
@@ -8,7 +9,10 @@ def create_connection_string(
         login: str = '',
         password: str = '',
         server: str = '',
+        server_port: str = '',
         replica_name: str = '',
+        database_name: str = '',
+        auth_database: str = '',
         direct_connection: bool = True,
 ) -> str:
     """
@@ -18,7 +22,11 @@ def create_connection_string(
         login (str): MongoDB login username. Defaults to an empty string.
         password (str): MongoDB login password. Defaults to an empty string.
         server (str): MongoDB server address. Defaults to an empty string.
+        server_port (str): MongoDB server port to use. Defaults to an '27017'.
         replica_name (str): MongoDB replica name. Default to an empty string.
+        database_name (str): MongoDb database name. Default to an empty string.
+        auth_database (str): MongoDB database used for authentication. Default to an empty string.
+        direct_connection: (bool): Type of connection to use. Default to `true`.
     Returns:
         str: The MongoDB connection string.
 
@@ -26,17 +34,25 @@ def create_connection_string(
         ValueError: If any of the required credentials are missing.
     """
     try:
-        login = login or getenv('db_login')
-        password = password or getenv('db_password')
-        server = server or getenv('server')
-        replica_name = replica_name or getenv('replica_name')
+        login = login or getenv('API_MONGO_LOGIN')
+        password = password or getenv('API_MONGO_PWD')
+        server = server or getenv('MONGO_SERVER')
+        server_port = server_port or getenv('MONGO_SERVER_INSIDE_PORT')
+        replica_name = replica_name or getenv('MONGO_REPLICA_NAME')
         if not all([login, password, server, replica_name]):
             raise ValueError('Missing required database credentials')
-        con_string = f'mongodb://{login}:{password}@{server}/?'
+        database_name = database_name or getenv('API_MONGO_DB_NAME')
+        auth_database = auth_database or getenv('API_MONGO_AUTH_DATABASE')
+        con_string = f'mongodb://{login}:{password}@{server}:{server_port}/{database_name}'
+        options = []
+        if auth_database:
+            options.append(f'authSource={auth_database}')
         if replica_name:
-            con_string += f'replicaSet={replica_name}'
+            options.append(f'replicaSet={replica_name}')
         if direct_connection:
-            con_string += '&directConnection=true'
+            options.append(f'directConnection={str(direct_connection).lower()}')
+        if options:
+            con_string += '?' + '&'.join(options)
         return con_string
     except Exception as e:
         logger.info(f"Error creating connection string: {e}")
@@ -86,9 +102,11 @@ class MongoDBClient:
         finally:
             pass
 
-
-load_dotenv('.env')
-
+if exists('.env'):
+    logger.info(".env file found, loading environment variables.")
+    load_dotenv('.env')
+else:
+    logger.error(".env file not found!")
 
 con_string = create_connection_string()
 mongo_client = MongoDBClient()
