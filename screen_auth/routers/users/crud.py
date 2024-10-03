@@ -1,5 +1,6 @@
 from loguru import logger
 from datetime import datetime
+from constants import SYSTEM_ROLES
 from pymongo.errors import PyMongoError
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -254,6 +255,7 @@ async def db_change_user_role(
 
 async def db_get_users_data(
         only_blocked: bool,
+        include_system_roles: bool,
         db_name: str,
         collection_name: str,
         db: AsyncIOMotorClient,
@@ -266,6 +268,12 @@ async def db_get_users_data(
     if only_blocked:
         query.update({
             'isBlocked': True
+        })
+    if not include_system_roles:
+        query.update({
+            'userRole': {
+                '$nin': list(SYSTEM_ROLES),
+            }
         })
     projection = {
         'hashedPassword': 0,

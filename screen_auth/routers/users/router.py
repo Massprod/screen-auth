@@ -414,6 +414,9 @@ async def patch_route_change_user_role(
 async def get_route_get_all_users(
         only_blocked: bool = Query(False,
                                    description='`true` = response includes only data about `blocked` users'),
+        include_system_roles: bool = Query(False,
+                                           description='`true` == include system roles | Roles like `celeryWorker`'
+                                                       ' Not related to basic roles and used by other services'),
         manager_username: str = Depends(verify_manager_token),
         db: AsyncIOMotorClient = Depends(mongo_client.depend_client),
 ):
@@ -421,7 +424,7 @@ async def get_route_get_all_users(
         f'{manager_username} attempts to get users data'
     )
     users_data = await db_get_users_data(
-        only_blocked, DB_AUTH_NAME, CLN_USERS, db
+        only_blocked, include_system_roles, DB_AUTH_NAME, CLN_USERS, db
     )
     resp_data = [
         await db_make_user_data_json_friendly(user_data) for user_data in users_data
