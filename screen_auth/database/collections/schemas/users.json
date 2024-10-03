@@ -28,7 +28,7 @@
     },
     "userRole": {
       "bsonType": "string",
-      "enum": ["admin", "manager", "labPersonal", "operator"],
+      "enum": ["admin", "manager", "labPersonal", "operator", "celeryWorker"],
       "description": "Assigned roles of registered User"
     },
     "isBlocked": {
