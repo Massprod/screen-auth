@@ -40,6 +40,7 @@ app: FastAPI = FastAPI(
     version='0.0.1',
     description='Basic JWT authentication service',
     lifespan=lifespan,
+    root_path='/api/auth',
 )
 
 
